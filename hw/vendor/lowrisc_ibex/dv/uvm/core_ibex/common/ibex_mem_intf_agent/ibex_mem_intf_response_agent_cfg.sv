@@ -11,10 +11,6 @@ class ibex_mem_intf_response_agent_cfg extends uvm_object;
   // interface handle used by driver & monitor
   virtual ibex_mem_intf vif;
 
-  // When set write responses have a fixed 32'hffffffff for rdata and matching correct rintg. When
-  // unset both rdata and rintg fields are x for write responses
-  bit fixed_data_write_response = 1'b0;
-
   // delay between request and grant
   int unsigned gnt_delay_min = 0;
   int unsigned gnt_delay_max = 10;
@@ -36,8 +32,7 @@ class ibex_mem_intf_response_agent_cfg extends uvm_object;
   // Default set to 50% for zero delay to be picked
   int unsigned zero_delay_pct = 50;
 
-  // CONTROL_KNOB : enable/disable to generation of bad integrity upon uninit accesses
-  bit enable_bad_intg_on_uninit_access = 0;
+  `uvm_object_new
 
   constraint zero_delays_c {
     zero_delays dist {1 :/ zero_delay_pct,
@@ -45,17 +40,12 @@ class ibex_mem_intf_response_agent_cfg extends uvm_object;
   }
 
   `uvm_object_utils_begin(ibex_mem_intf_response_agent_cfg)
-    `uvm_field_int(fixed_data_write_response, UVM_DEFAULT)
-    `uvm_field_int(gnt_delay_min,             UVM_DEFAULT)
-    `uvm_field_int(gnt_delay_max,             UVM_DEFAULT)
-    `uvm_field_int(valid_delay_min,           UVM_DEFAULT)
-    `uvm_field_int(valid_delay_max,           UVM_DEFAULT)
-    `uvm_field_int(zero_delays,               UVM_DEFAULT)
-    `uvm_field_int(zero_delay_pct,            UVM_DEFAULT)
+    `uvm_field_int(gnt_delay_min,       UVM_DEFAULT)
+    `uvm_field_int(gnt_delay_max,       UVM_DEFAULT)
+    `uvm_field_int(valid_delay_min,     UVM_DEFAULT)
+    `uvm_field_int(valid_delay_max,     UVM_DEFAULT)
+    `uvm_field_int(zero_delays,         UVM_DEFAULT)
+    `uvm_field_int(zero_delay_pct,      UVM_DEFAULT)
   `uvm_object_utils_end
-
-  function new(string name = "");
-    super.new(name);
-  endfunction
 
 endclass

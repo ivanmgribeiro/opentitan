@@ -56,13 +56,16 @@ module ibex_pmp #(
                                               ibex_pkg::pmp_req_e  pmp_req_type,
                                               ibex_pkg::priv_lvl_e priv_mode,
                                               logic                permission_check);
-    return csr_pmp_mseccfg_mml ? mml_perm_check(csr_pmp_cfg,
-                                                pmp_req_type,
-                                                priv_mode,
-                                                permission_check) :
-                                 orig_perm_check(csr_pmp_cfg.lock,
-                                                 priv_mode,
-                                                 permission_check);
+    if (csr_pmp_mseccfg_mml) begin
+      return mml_perm_check(csr_pmp_cfg,
+                            pmp_req_type,
+                            priv_mode,
+                            permission_check);
+    end else begin
+      return orig_perm_check(csr_pmp_cfg.lock,
+                             priv_mode,
+                             permission_check);
+    end
   endfunction
 
   // Compute permissions checks that apply when MSECCFG.MML is set. Added for Smepmp support.
@@ -120,25 +123,21 @@ module ibex_pmp #(
 
   // Access fault determination / prioritization
   function automatic logic access_fault_check (logic                     csr_pmp_mseccfg_mmwp,
-                                               logic                     csr_pmp_mseccfg_mml,
-                                               ibex_pkg::pmp_req_e       pmp_req_type,
                                                logic [PMPNumRegions-1:0] match_all,
                                                ibex_pkg::priv_lvl_e      priv_mode,
                                                logic [PMPNumRegions-1:0] final_perm_check);
 
 
     // When MSECCFG.MMWP is set default deny always, otherwise allow for M-mode, deny for other
-    // modes. Also deny unmatched for M-mode whe MSECCFG.MML is set and request type is EXEC.
-    logic access_fail = csr_pmp_mseccfg_mmwp | (priv_mode != PRIV_LVL_M) |
-                        (csr_pmp_mseccfg_mml && (pmp_req_type == PMP_ACC_EXEC));
-    logic matched = 1'b0;
+    // modes
+    logic access_fail = csr_pmp_mseccfg_mmwp | (priv_mode != PRIV_LVL_M);
 
     // PMP entries are statically prioritized, from 0 to N-1
     // The lowest-numbered PMP entry which matches an address determines accessibility
     for (int r = 0; r < PMPNumRegions; r++) begin
-      if (!matched && match_all[r]) begin
+      if (match_all[r]) begin
         access_fail = ~final_perm_check[r];
-        matched = 1'b1;
+        break;
       end
     end
     return access_fail;
@@ -218,18 +217,11 @@ module ibex_pmp #(
                                                           pmp_req_type_i[c],
                                                           priv_mode_i[c],
                                                           region_basic_perm_check[c][r]);
-
-      // Address bits below PMP granularity (which starts at 4 byte) are deliberately unused.
-      logic unused_sigs;
-      assign unused_sigs = ^{region_start_addr[r][PMPGranularity+2-1:0],
-                             pmp_req_addr_i[c][PMPGranularity+2-1:0]};
     end
 
     // Once the permission checks of the regions are done, decide if the access is
     // denied by figuring out the matching region and its permission check.
     assign pmp_req_err_o[c] = access_fault_check(csr_pmp_mseccfg_i.mmwp,
-                                                 csr_pmp_mseccfg_i.mml,
-                                                 pmp_req_type_i[c],
                                                  region_match_all[c],
                                                  priv_mode_i[c],
                                                  region_perm_check[c]);

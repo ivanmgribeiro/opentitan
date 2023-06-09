@@ -5,11 +5,16 @@
 package ibex_mem_intf_agent_pkg;
 
   import uvm_pkg::*;
-  import ibex_mem_intf_pkg::*;
   import mem_model_pkg::*;
-  import ibex_cosim_agent_pkg::*;
+
+  parameter int DATA_WIDTH = 32;
+  parameter int ADDR_WIDTH = 32;
+  parameter int INTG_WIDTH = 7;
+
+  typedef enum { READ, WRITE } rw_e;
 
   `include "uvm_macros.svh"
+  `include "ibex_mem_intf_seq_item.sv"
 
   typedef uvm_sequencer#(ibex_mem_intf_seq_item) ibex_mem_intf_request_sequencer;
 

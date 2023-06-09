@@ -16,6 +16,7 @@ module ibex_register_file_fpga #(
     parameter int unsigned          DataWidth         = 32,
     parameter bit                   DummyInstructions = 0,
     parameter bit                   WrenCheck         = 0,
+    parameter logic [DataWidth-1:0] WordResetVal      = '0,
     parameter logic [DataWidth-1:0] WordZeroVal       = '0
 ) (
   // Clock and Reset
@@ -24,7 +25,6 @@ module ibex_register_file_fpga #(
 
   input  logic                 test_en_i,
   input  logic                 dummy_instr_id_i,
-  input  logic                 dummy_instr_wb_i,
 
   //Read port R1
   input  logic [          4:0] raddr_a_i,
@@ -48,10 +48,10 @@ module ibex_register_file_fpga #(
   logic we; // write enable if writing to any register other than R0
 
   // async_read a
-  assign rdata_a_o = (raddr_a_i == '0) ? '0 : mem[raddr_a_i];
+  assign rdata_a_o = (raddr_a_i == '0) ? WordZeroVal : mem[raddr_a_i];
 
   // async_read b
-  assign rdata_b_o = (raddr_b_i == '0) ? '0 : mem[raddr_b_i];
+  assign rdata_b_o = (raddr_b_i == '0) ? WordZeroVal : mem[raddr_b_i];
 
   // we select
   assign we = (waddr_a_i == '0) ? 1'b0 : we_a_i;
@@ -79,7 +79,7 @@ module ibex_register_file_fpga #(
   // Make sure we initialize the BRAM with the correct register reset value.
   initial begin
     for (int k = 0; k < NUM_WORDS; k++) begin
-      mem[k] = WordZeroVal;
+      mem[k] = WordResetVal;
     end
   end
 
@@ -89,7 +89,7 @@ module ibex_register_file_fpga #(
 
   // Dummy instruction changes not relevant for FPGA implementation
   logic unused_dummy_instr;
-  assign unused_dummy_instr = dummy_instr_id_i ^ dummy_instr_wb_i;
+  assign unused_dummy_instr = dummy_instr_id_i;
   // Test enable signal not used in FPGA implementation
   logic unused_test_en;
   assign unused_test_en = test_en_i;

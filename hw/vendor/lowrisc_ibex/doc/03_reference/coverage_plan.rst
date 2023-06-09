@@ -3,6 +3,9 @@
 Coverage Plan
 =============
 
+.. note::
+  Work to implement the functional coverage described in this plan is on-going and the plan itself is not yet complete.
+
 .. todo::
   Branch prediction hasn't yet been considered, this will add more coverage points and alter some others
 
@@ -17,12 +20,6 @@ Architectural coverage is not Ibex specific. It can be determined directly from 
 
 Microarchitectural coverage will probe the Ibex RTL directly and is described here.
 There is some inevitable overlap between architectural and microarchitectural coverage but we aim to minimise it.
-
-Coverage Implementation
------------------------
-All coverpoints and cross coverage defined below is associated with a name ``cp_name``.
-This is the name of the coverpoint or cross that implements the described coverage.
-Coverage is implemented in two files; :file:`dv/uvm/core_ibex/fcov/core_ibex_pmp_fcov_if.sv` for PMP related coverage and :file:`dv/uvm/core_ibex/fcov/core_ibex_fcov_if.sv` for everything else.
 
 Microarchitectural Events and Behaviour
 ---------------------------------------
@@ -161,10 +158,9 @@ Some instructions will behave differently depending upon the state of the proces
     * ``tdata3``
 
 * Loads/stores with ``mstatus.mprv`` set and unset.
-  Covered by ``mprv_effect_cross``
+  Covered by ````mprv_effect_cross``
 * EBreak behaviour in U/M mode with different ``dcsr.ebreakm`` / ``dcsr.ebreaku`` settings.
   Covered by ``priv_mode_instr_cross``
-* ``cp_single_step_instr`` - Single step over every instruction category
 
 Pipeline State
 ^^^^^^^^^^^^^^
@@ -177,22 +173,24 @@ Each pipeline stage has some associated state.
 * Controller (within ID stage) state machine states
 
   * ``cp_controller_fsm`` - Possible transitions between these states.
+    Those marked with a '*' are of particular interest and should be crossed with instruction categories and other coverpoints as appropriate to fully explore the transitions.
 
     * ``RESET`` -> ``BOOT_SET``
     * ``BOOT_SET`` -> ``FIRST_FETCH``
     * ``FIRST_FETCH`` -> ``DECODE``
     * ``FIRST_FETCH`` -> ``IRQ_TAKEN``
     * ``FIRST_FETCH`` -> ``DBG_TAKEN_IF``
-    * ``DECODE`` -> ``FLUSH``
-    * ``DECODE`` -> ``DBG_TAKEN_IF``
-    * ``DECODE`` -> ``IRQ_TAKEN``
+    * ``DECODE`` -> ``FLUSH`` *
+    * ``DECODE`` -> ``DBG_TAKEN_IF`` *
+    * ``DECODE`` -> ``IRQ_TAKEN`` *
     * ``IRQ_TAKEN`` -> ``DECODE``
     * ``DBG_TAKEN_IF`` -> ``DECODE``
     * ``DBG_TAKEN_ID`` -> ``DECODE``
-    * ``FLUSH`` -> ``DECODE``
+    * ``FLUSH`` -> ``DECODE`` *
     * ``FLUSH`` -> ``DBG_TAKEN_ID``
     * ``FLUSH`` -> ``WAIT_SLEEP``
-    * ``FLUSH`` -> ``DBG_TAKEN_IF``
+    * ``FLUSH`` -> ``IRQ_TAKEN`` *
+    * ``FLUSH`` -> ``DBG_TAKEN_IF`` *
     * ``WAIT_SLEEP`` -> ``SLEEP``
     * ``SLEEP`` -> ``FIRST_FETCH``
 
@@ -204,13 +202,9 @@ Furthermore they can all occur together and must be appropriately prioritised (c
 * Exception from instruction fetch error (covered by the **FetchError** instruction category).
 * ``pmp_iside_mode_cross`` - Exception from instruction PMP violation.
 * Exception from illegal instruction (covered by the illegal instruction categories).
-* ``cp_ls_error_exception`` - Exception from memory fetch error.
+* Exception from memory fetch error.
 * ``pmp_dside_mode_cross`` - Exception from memory access PMP violation.
-* Unaligned memory access
-
-  * ``misaligned_insn_bus_err_cross``, ``misaligned_data_bus_err_cross`` - Cover all error and no error scenarios for memory fetch error; first access saw error, second
-    access saw error, neither access saw error
-
+* Unaligned access cases (both accesses saw error, first or second only saw error, or neither saw error) for both kinds of memory exceptions.
 * Interrupt raised/taken.
 
   * ``cp_interrupt_taken`` - Interrupt raised/taken for each available interrupt line.
@@ -218,23 +212,24 @@ Furthermore they can all occur together and must be appropriately prioritised (c
     This is done by using ``cp_nmi_taken`` coverpoint in the crosses.
   * ``interrupt_taken_instr_cross`` - Interrupt raised/taken the first cycle an instruction is in ID/EX or some other cycle the instruction is in ID/EX.
 
-* ``cp_debug_req`` - External debug request.
-* ``cp_single_step_taken`` - Instruction executed when debug single step enabled.
-* ``cp_single_step_exception`` - Single step over an instruction that takes an exception.
-* ``cp_insn_trigger_enter_debug`` - Instruction matches hardware trigger point.
-* ``cp_debug_mode`` - Ibex operating in debug mode.
+* External debug request.
+* Instruction executed when debug single step enabled.
+* Instruction matches hardware trigger point.
+
+  * Instruction matching trigger point causes exception
+
+* Ibex operating in debug mode.
 * ``irq_wfi_cross``, ``debug_wfi_cross`` - Debug and Interrupt whilst sleeping with WFI
 
   * Cover with global interrupts enabled and disabled
   * Cover with specific interrupt enabled and disabled (Should exit sleep when
     interrupt is enabled but global interrupts set to disabled, should continue
     sleeping when both are disabled).
-    Continuing to sleep in the case explained above is covered by ``cp_irq_continue_sleep``, otherwise the behaviour is captured in ``irq_wfi_cross``
+    Continuing to sleep in the case explained above is covered by ``cp_irq_continue_sleep``
 
 * Debug and interrupt occurring whilst entering WFI
 
   * Covering period between WFI entering ID/EX stage and going into sleep
-    Covered by bin ``enter_sleep`` of ``cp_controller_fsm_sleep`` that is used by ``irq_wfi_cross`` and ``debug_wfi_cross``.
 
 * ``cp_double_fault`` - Double fault
 
@@ -247,8 +242,6 @@ PMP
   * NA4
   * NAPOT
 
-* ``cp_napot_addr_modes`` - When NAPOT is enabled check that each address mode is seen at least once.
-
 * ``cp_region_priv_bits`` - Each region configured with all possible permissions including locked/unlocked.
 
   * Different permissions with MML enabled and disabled, separate cover points for R/W/X/L values with and without MML.
@@ -257,10 +250,10 @@ PMP
 
   * ``misaligned_lsu_access_cross`` - All combinations of unaligned access split across a boundary, both halves pass, neither pass, just the first passes, just the second passes.
 
-    * Two possible boundary splits; across a 32-bit boundary within a region or a boundary between PMP regions.
+    * ``pmp_instr_edge_cross`` - Two possible boundary splits; across a 32-bit boundary within a region or a boundary between PMP regions.
 
   * ``cp_pmp_iside_region_override``, ``cp_pmp_iside2_region_override``, ``cp_pmp_dside_region_override`` - Higher priority entry allows access that lower priority entry prevents.
-  * ``pmp_instr_edge_cross`` - Compressed instruction access (16-bit) passes PMP but 32-bit access at same address crosses PMP region boundary.
+  * Compressed instruction access (16-bit) passes PMP but 32-bit access at same address crosses PMP region boundary.
 
 * Each field of mssecfg enabled/disabled with relevant functionality tested.
 
@@ -280,11 +273,6 @@ PMP
 
 * Access close to PMP region modification that allows/disallows that access.
 
-* ``pmp_wr_exec_region`` - Explores behaviour around adding executable regions when MML is enabled.
-    Cross of current region configuration with region configuration that is being written and RLB setting.
-    It only considers regions that aren't currently executable with writes attempted to make them executable.
-    Non MML configurations are not sampled.
-
 CSRs
 ^^^^
 Basic read/write functionality must be tested on all implemented CSRs.
@@ -301,77 +289,10 @@ Basic read/write functionality must be tested on all implemented CSRs.
   * Access to CSR disallowed due to privilege levels/debug mode
     Covered by ensuring within the crosses
 
+* ``cp_ignored_csrs_ro``, ``cp_ignored_csrs_w`` - Read and write from/to an unimplemented CSR
+
 CSRs addresses do not need to be crossed with the variety of CSR instructions as these all use the same basic read & write interface into ``ibex_cs_registers``.
 Coverage of the above points will be sampled at the ``ibex_cs_registers`` interface (as opposed to sampling CSR instructions).
-
-Security Countermeasures
-^^^^^^^^^^^^^^^^^^^^^^^^
-For more detail about each security countermeasure in Ibex see :ref:`security`
-
-* ``cp_data_ind_timing`` - Enabling/Disabling "Data Independent Timing" feature.
-
-* ``cp_data_ind_timing_instr`` - Executing each instruction category while data independent timing feature is enabled.
-
-* ``cp_dummy_instr_en`` - Enabling/Disabling "Dummy Instruction Insertion" feature.
-
-* ``cp_dummy_instr_mask`` - Frequency of injection for the dummy instructions.
-
-* ``cp_dummy_instr_type`` - Type of the injected dummy instruction.
-
-* ``cp_dummy_instr`` - Executing each instruction category while dummy instruction insertion feature is enabled.
-
-* ``cp_dummy_instr_if_stage`` - The IF stage handles a dummy instruction.
-
-* ``cp_dummy_instr_id_stage`` - The ID/EX stage handles a dummy instruction.
-
-* ``cp_dummy_instr_wb_stage`` - The WB stage handles a dummy instruction.
-
-* ``cp_rf_a_ecc_err``, ``cp_rf_b_ecc_err`` - Register file integrity (ECC) fault is seen for port A/B.
-
-* ``cp_icache_ecc_err`` - ICache has seen an integrity (ECC) fault.
-
-* ``cp_mem_load_ecc_err`` - An ECC error has been seen on a load response
-
-* ``cp_mem_store_ecc_err`` - An ECC error has been seen on a store response
-
-* ``cp_lockstep_err`` - Lockstep glitch fault seen.
-
-* ``cp_rf_we_glitch_err`` - Register file write enable glitch fault seen.
-
-* ``cp_pc_mismatch_err`` - PC mismatch error seen.
-
-The :ref:`security features Ibex implements <security>` are given specific security countermeasure names in OpenTitan (see 'Security Countermeasures' in the `Hardware Interfaces <https://docs.opentitan.org/hw/ip/rv_core_ibex/doc/#hardware-interfaces>`_ documentation section).
-The mapping between security countermeasures and coverpoints that demonstrate it being used is given below.
-
-+--------------------------------+-------------------------------------------------------+
-| Security Countermeasure        | Coverpoint(s)                                         |
-+================================+=======================================================+
-| BUS.INTEGRITY                  | ``cp_mem_load_ecc_err`` ``cp_mem_store_ecc_err``      |
-+--------------------------------+-------------------------------------------------------+
-| SCRAMBLE.KEY.SIDELOAD          | ``FENCE.I`` of ``cp_id_instr_category``               |
-+--------------------------------+-------------------------------------------------------+
-| CORE.DATA_REG_SW.SCA           | ``cp_data_ind_timing`` ``cp_data_ind_timining_instr`` |
-+--------------------------------+-------------------------------------------------------+
-| PC.CTRL_FLOW.CONSISTENCY       | ``cp_pc_mismatch_err``                                |
-+--------------------------------+-------------------------------------------------------+
-| CTRL_FLOW.UNPREDICTABLE        | ``cp_dummy_instr`` and related coverpoints            |
-+--------------------------------+-------------------------------------------------------+
-| DATA_REG_SW.INTEGRITY          | ``cp_rf_a_ecc_err`` ``cp_rf_b_ecc_err``               |
-+--------------------------------+-------------------------------------------------------+
-| DATA_REG_SW.GLITCH_DETECT      | ``cp_rf_we_glitch_err``                               |
-+--------------------------------+-------------------------------------------------------+
-| LOGIC.SHADOW                   | ``cp_lockstep_err``                                   |
-+--------------------------------+-------------------------------------------------------+
-| FETCH.CTRL.LC_GATED            | ``cp_fetch_enable``                                   |
-+--------------------------------+-------------------------------------------------------+
-| EXCEPTION.CTRL_FLOW.LOCAL_ESC  | ``cp_double_fault``                                   |
-+--------------------------------+-------------------------------------------------------+
-| EXCEPTION.CTRL_FLOW.GLOBAL_ESC | ``cp_double_fault``                                   |
-+--------------------------------+-------------------------------------------------------+
-| ICACHE.MEM.SCRAMBLE            | ``FENCE.I`` of ``cp_id_instr_category``               |
-+--------------------------------+-------------------------------------------------------+
-| ICACHE.MEM.INTEGRITY           | ``cp_icache_ecc_err``                                 |
-+--------------------------------+-------------------------------------------------------+
 
 Miscellaneous
 ^^^^^^^^^^^^^
@@ -379,7 +300,6 @@ Various points of interest do not fit into the categories above.
 
 * ``instr_unstalled`` - Instruction unstalled - Cover the cycle an instruction is unstalled having just been stalled.
 * ``cp_icache_enable`` - Enabling/Disabling ICache.
-* ``cp_fetch_enable`` - Fetch enabled and disabled via top-level ``fetch_enable_i`` input.
 
 Cross Coverage
 --------------
@@ -423,11 +343,3 @@ There must be a documented reason a particular bin is added to the illegal or ig
 * ``pmp_iside_priv_bits_cross``, ``pmp_iside2_priv_bits_cross``, ``pmp_dside_priv_bits_cross``, PMP regions x permissions x access fail/pass x privilege level
 
   * Three crosses, one for each PMP channel (instruction, instruction 2 and data).
-
-* ``dummy_instr_config_cross`` - Dummy Instruction Type x Dummy Instruction Insertion Frequency to explore all possible configurations.
-
-* ``rf_ecc_err_cross`` - ECC Error on Port A x ECC Error on Port B to explore all possible combinations of reported ECC errors.
-
-* ``debug_req_dummy_instr_{if,id,wb}_stage_cross`` - The IF, ID/EX, or WB stage handles a dummy instruction while a debug request arrives.
-
-* ``irq_pending_dummy_instr_{if,id,wb}_stage_cross`` - The IF, ID/EX, or WB stage handles a dummy instruction while an IRQ is pending.

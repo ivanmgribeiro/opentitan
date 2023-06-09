@@ -12,7 +12,6 @@ filesets:
   files_dv:
     depend:
       - lowrisc:dv:ibex_icache_test
-      - lowrisc:dv:ibex_icache_fcov
       - lowrisc:prim:ram_1p_scr
     files:
       - tb/tb.sv

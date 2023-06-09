@@ -16,6 +16,7 @@ module ibex_register_file_latch #(
   parameter int unsigned          DataWidth         = 32,
   parameter bit                   DummyInstructions = 0,
   parameter bit                   WrenCheck         = 0,
+  parameter logic [DataWidth-1:0] WordResetVal      = '0,
   parameter logic [DataWidth-1:0] WordZeroVal       = '0
 ) (
   // Clock and Reset
@@ -24,7 +25,6 @@ module ibex_register_file_latch #(
 
   input  logic                 test_en_i,
   input  logic                 dummy_instr_id_i,
-  input  logic                 dummy_instr_wb_i,
 
   //Read port R1
   input  logic [4:0]           raddr_a_i,
@@ -83,7 +83,7 @@ module ibex_register_file_latch #(
   // Use clk_int here, since otherwise we don't want to write anything anyway.
   always_ff @(posedge clk_int or negedge rst_ni) begin : sample_wdata
     if (!rst_ni) begin
-      wdata_a_q   <= WordZeroVal;
+      wdata_a_q   <= WordResetVal;
     end else begin
       if (we_a_i) begin
         wdata_a_q <= wdata_a_i;
@@ -163,7 +163,7 @@ module ibex_register_file_latch #(
     logic [DataWidth-1:0] mem_r0;
 
     // Write enable for dummy R0 register (waddr_a_i will always be 0 for dummy instructions)
-    assign we_r0_dummy = we_a_i & dummy_instr_wb_i;
+    assign we_r0_dummy = we_a_i & dummy_instr_id_i;
 
     // R0 clock gate
     prim_clock_gating cg_i (
@@ -183,8 +183,8 @@ module ibex_register_file_latch #(
     assign mem[0] = dummy_instr_id_i ? mem_r0 : WordZeroVal;
 
   end else begin : g_normal_r0
-    logic unused_dummy_instr;
-    assign unused_dummy_instr = dummy_instr_id_i ^ dummy_instr_wb_i;
+    logic unused_dummy_instr_id;
+    assign unused_dummy_instr_id = dummy_instr_id_i;
 
     assign mem[0] = WordZeroVal;
   end

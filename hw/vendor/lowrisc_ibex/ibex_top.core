@@ -131,7 +131,7 @@ parameters:
     datatype: int
     default: 0
     paramtype: vlogparam
-    description: "Granularity of NAPOT range, 0 = 4 byte, 1 = 8 byte, 2 = 16 byte, 3 = 32 byte etc"
+    description: "Granularity of NAPOT range, 0 = 4 byte, 1 = byte, 2 = 16 byte, 3 = 32 byte etc"
 
   PMPNumRegions:
     datatype: int
@@ -150,6 +150,12 @@ parameters:
     paramtype: vlogparam
     default: 40
     description: Bit width of performance monitor event counters [32/64]
+
+  TestRIG:
+    datatype: int
+    paramtype: vlogparam
+    default: 0
+    description: "Whether TestRIG support should be enabled"
 
 targets:
   default: &default_target

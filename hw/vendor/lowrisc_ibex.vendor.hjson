@@ -6,8 +6,8 @@
   target_dir: "lowrisc_ibex",
 
   upstream: {
-    url: "https://github.com/lowRISC/ibex.git",
-    rev: "master",
+    url: "https://github.com/ivanmgribeiro/ibex.git"
+    rev: "ibex_cheri",
   },
 
   mapping: [
@@ -18,6 +18,8 @@
     "syn",
     "util",
     "vendor/google_riscv-dv",
+    "vendor/cheri-cap-lib",
+    "vendor/SocketPacketUtils",
 
     "ibex_configs.yaml",
 
