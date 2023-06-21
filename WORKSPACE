@@ -10,13 +10,13 @@ workspace(name = "lowrisc_opentitan")
 # CRT is the Compiler Repository Toolkit.  It contains the configuration for
 # the windows compiler.
 load("//third_party/crt:repos.bzl", "crt_repos")
-crt_repos()
+crt_repos("../crt")
 load("@crt//:repos.bzl", "crt_repos")
 crt_repos()
 load("@crt//:deps.bzl", "crt_deps")
 crt_deps()
 load("@crt//config:registration.bzl", "crt_register_toolchains")
-crt_register_toolchains(riscv32 = True)
+crt_register_toolchains(cheri_riscv32 = True)
 
 # Tools for release automation
 load("//third_party/github:repos.bzl", "github_tools_repos")
